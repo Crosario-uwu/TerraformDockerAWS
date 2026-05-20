@@ -22,14 +22,10 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
-          
-
       - name: Terraform init
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform init
 
-   
-        
       - name: Terraform apply
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform apply -auto-approve
