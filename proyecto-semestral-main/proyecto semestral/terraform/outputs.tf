@@ -14,7 +14,7 @@ output "ecr_frontend" {
   value = aws_ecr_repository.frontend.repository_url
 }
 
-# output "ssh_private_key_pem" {
-#   value     = tls_private_key.deployer.private_key_pem
-#   sensitive = true
-# }
+output "ssh_private_key_pem" {
+  value     = tls_private_key.deployer.private_key_pem
+  sensitive = true
+}
