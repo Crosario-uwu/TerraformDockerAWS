@@ -22,23 +22,27 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
-      - name: Import existing ECR repos (if they exist)
-        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
-        run: |
-          aws ecr describe-repositories --repository-names proyecto-semestral-backend-ventas --region ${{ secrets.AWS_REGION }} > /dev/null 2>&1 && \
-            terraform import aws_ecr_repository.backend_ventas proyecto-semestral-backend-ventas || true
-
-            aws ecr describe-repositories --repository-names proyecto-semestral-backend-despacho --region ${{ secrets.AWS_REGION }} > /dev/null 2>&1 && \
-              terraform import aws_ecr_repository.backend_despacho proyecto-semestral-backend-despacho  true
-
-            aws ecr describe-repositories --repository-names proyecto-semestral-frontend --region ${{ secrets.AWS_REGION }} > /dev/null 2>&1 && \
-              terraform import aws_ecr_repository.frontend proyecto-semestral-frontend  true
-
           
 
       - name: Terraform init
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform init
+
+      - name: Import existing ECR repos (if they exist)
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
+        run: |
+          import_if_exists() {
+            local resource=$1
+            local name=$2
+            if aws ecr describe-repositories --repository-names "$name" --region ${{ secrets.AWS_REGION }} > /dev/null 2>&1; then
+              terraform import "$resource" "$name"
+            else
+              echo "Repository $name does not exist, skipping import"
+            fi}
+
+            import_if_exists aws_ecr_repository.backend_ventas   proyecto-semestral-backend-ventas
+            import_if_exists aws_ecr_repository.backend_despacho proyecto-semestral-backend-despacho
+            import_if_exists aws_ecr_repository.frontend          proyecto-semestral-frontend
 
       - name: Terraform apply
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
