@@ -28,22 +28,7 @@ jobs:
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform init
 
-      - name: Import existing ECR repos (if they exist)
-        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
-        run: |
-          import_if_exists() {
-            local resource=$1
-            local name=$2
-            if aws ecr describe-repositories --repository-names "$name" --region ${{ secrets.AWS_REGION }} > /dev/null 2>&1; then
-              terraform import "$resource" "$name"
-            else
-              echo "Repository $name does not exist, skipping import"
-            fi}
-
-            import_if_exists aws_ecr_repository.backend_ventas   proyecto-semestral-backend-ventas
-            import_if_exists aws_ecr_repository.backend_despacho proyecto-semestral-backend-despacho
-            import_if_exists aws_ecr_repository.frontend          proyecto-semestral-frontend
-
+   
       - name: Terraform apply
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform apply -auto-approve
