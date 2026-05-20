@@ -35,6 +35,10 @@ jobs:
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform init
 
+      - name: Terraform destroy
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
+        run: terraform destroy -auto-approve || true
+
       - name: Terraform apply
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform apply -auto-approve
