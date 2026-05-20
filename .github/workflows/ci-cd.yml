@@ -2,7 +2,7 @@ name: CI/CD - Terraform, Build, Push, Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ Deploy ]
 
 jobs:
   deploy:
@@ -13,69 +13,81 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          # Set these values in GitHub repository secrets:
-          # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - name: Delete existing resources
+        run: |
+          aws ecr delete-repository --repository-name proyecto-semestral-backend-ventas --force --region ${{ secrets.AWS_REGION }} || true
+          aws ecr delete-repository --repository-name proyecto-semestral-backend-despacho --force --region ${{ secrets.AWS_REGION }} || true
+          aws ecr delete-repository --repository-name proyecto-semestral-frontend --force --region ${{ secrets.AWS_REGION }} || true
+          aws ec2 delete-key-pair --key-name deployer-key --region ${{ secrets.AWS_REGION }} || true
 
       - name: Terraform init
-        working-directory: ./terraform
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform init
 
+      - name: Terraform destroy
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
+        run: terraform destroy -auto-approve || true
+
       - name: Terraform apply
-        working-directory: ./terraform
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform apply -auto-approve
 
       - name: Get terraform outputs
-        working-directory: ./terraform
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: |
           terraform output -json > tfoutputs.json
           cat tfoutputs.json
 
       - name: Parse outputs
         id: parse
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: |
-          ECR_BACKEND_VENTAS=$(jq -r '.ecr_backend_ventas.value' terraform/tfoutputs.json)
-          ECR_BACKEND_DESPACHO=$(jq -r '.ecr_backend_despacho.value' terraform/tfoutputs.json)
-          ECR_FRONTEND=$(jq -r '.ecr_frontend.value' terraform/tfoutputs.json)
-          EC2_IP=$(jq -r '.ec2_public_ip.value' terraform/tfoutputs.json)
+          ECR_BACKEND_VENTAS=$(jq -r '.ecr_backend_ventas.value' tfoutputs.json)
+          ECR_BACKEND_DESPACHO=$(jq -r '.ecr_backend_despacho.value' tfoutputs.json)
+          ECR_FRONTEND=$(jq -r '.ecr_frontend.value' tfoutputs.json)
+          EC2_IP=$(jq -r '.ec2_public_ip.value' tfoutputs.json)
           echo "ECR_BACKEND_VENTAS=$ECR_BACKEND_VENTAS" >> $GITHUB_OUTPUT
           echo "ECR_BACKEND_DESPACHO=$ECR_BACKEND_DESPACHO" >> $GITHUB_OUTPUT
           echo "ECR_FRONTEND=$ECR_FRONTEND" >> $GITHUB_OUTPUT
           echo "EC2_IP=$EC2_IP" >> $GITHUB_OUTPUT
 
-
       - name: Build and push backend ventas
         run: |
-          ECR_URI=${{ steps.parse.outputs.ECR_BACKEND_VENTAS }}
+          ECR_URI="${{ steps.parse.outputs.ECR_BACKEND_VENTAS }}"
           REGISTRY=$(echo $ECR_URI | cut -d'/' -f1)
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY
-          docker build -t $ECR_URI:latest back-Ventas_SpringBoot/Springboot-API-REST
+          docker build -t $ECR_URI:latest "proyecto-semestral-main/proyecto semestral/back-Ventas_SpringBoot/Springboot-API-REST"
           docker push $ECR_URI:latest
 
       - name: Build and push backend despacho
         run: |
-          ECR_URI=${{ steps.parse.outputs.ECR_BACKEND_DESPACHO }}
+          ECR_URI="${{ steps.parse.outputs.ECR_BACKEND_DESPACHO }}"
           REGISTRY=$(echo $ECR_URI | cut -d'/' -f1)
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY
-          docker build -t $ECR_URI:latest back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+          docker build -t $ECR_URI:latest "proyecto-semestral-main/proyecto semestral/back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO"
           docker push $ECR_URI:latest
 
       - name: Build and push frontend
         run: |
-          ECR_URI=${{ steps.parse.outputs.ECR_FRONTEND }}
+          ECR_URI="${{ steps.parse.outputs.ECR_FRONTEND }}"
           REGISTRY=$(echo $ECR_URI | cut -d'/' -f1)
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY
-          docker build -t $ECR_URI:latest front_despacho
+          docker build -t $ECR_URI:latest "proyecto-semestral-main/proyecto semestral/front_despacho"
           docker push $ECR_URI:latest
 
       - name: Retrieve SSH private key
-        working-directory: ./terraform
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: |
           terraform output -raw ssh_private_key_pem > deploy_key.pem
           chmod 600 deploy_key.pem
@@ -86,15 +98,21 @@ jobs:
         env:
           EC2_IP: ${{ steps.parse.outputs.EC2_IP }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
           ECR_BACKEND_VENTAS: ${{ steps.parse.outputs.ECR_BACKEND_VENTAS }}
           ECR_BACKEND_DESPACHO: ${{ steps.parse.outputs.ECR_BACKEND_DESPACHO }}
           ECR_FRONTEND: ${{ steps.parse.outputs.ECR_FRONTEND }}
         run: |
-          chmod 600 terraform/deploy_key.pem
-          export DEPLOY_KEY=terraform/deploy_key.pem
+          chmod 600 "proyecto-semestral-main/proyecto semestral/terraform/deploy_key.pem"
+          export DEPLOY_KEY="proyecto-semestral-main/proyecto semestral/terraform/deploy_key.pem"
           export EC2_IP=${EC2_IP}
           export AWS_REGION=${AWS_REGION}
+          export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+          export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+          export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
           export ECR_BACKEND_VENTAS=${ECR_BACKEND_VENTAS}
           export ECR_BACKEND_DESPACHO=${ECR_BACKEND_DESPACHO}
           export ECR_FRONTEND=${ECR_FRONTEND}
-          bash deploy/deploy_ec2.sh
+          bash "proyecto-semestral-main/proyecto semestral/deploy/deploy_ec2.sh"

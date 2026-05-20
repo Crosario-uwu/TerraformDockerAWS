@@ -7,7 +7,7 @@ if [[ -z "${EC2_IP:-}" || -z "${DEPLOY_KEY:-}" || -z "${AWS_REGION:-}" || -z "${
   exit 1
 fi
 
-cat > docker-compose-ecr.yml <<EOF
+cat > docker-compose-ecr.yml <<DOCKEREOF
 version: '3.8'
 services:
   mysql_ventas:
@@ -55,8 +55,15 @@ services:
 volumes:
   mysql_ventas_data: {}
   mysql_despacho_data: {}
-EOF
+DOCKEREOF
 
 scp -o StrictHostKeyChecking=no -i "$DEPLOY_KEY" docker-compose-ecr.yml ec2-user@"$EC2_IP":/home/ec2-user/docker-compose-ecr.yml
+
 ssh -o StrictHostKeyChecking=no -i "$DEPLOY_KEY" ec2-user@"$EC2_IP" \
-  "REGISTRY=\$(echo '${ECR_BACKEND_VENTAS}' | cut -d'/' -f1); aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin \$REGISTRY; docker-compose -f /home/ec2-user/docker-compose-ecr.yml pull; docker-compose -f /home/ec2-user/docker-compose-ecr.yml up -d"
+  "export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}; \
+   export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}; \
+   export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}; \
+   REGISTRY=\$(echo '${ECR_BACKEND_VENTAS}' | cut -d'/' -f1); \
+   aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin \$REGISTRY; \
+   docker-compose -f /home/ec2-user/docker-compose-ecr.yml pull; \
+   docker-compose -f /home/ec2-user/docker-compose-ecr.yml up -d"
