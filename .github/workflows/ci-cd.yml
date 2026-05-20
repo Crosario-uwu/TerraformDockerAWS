@@ -2,7 +2,7 @@ name: CI/CD - Terraform, Build, Push, Deploy
 
 on:
   push:
-    branches: [ deploy ]
+    branches: [ Deploy ]
 
 jobs:
   deploy:
