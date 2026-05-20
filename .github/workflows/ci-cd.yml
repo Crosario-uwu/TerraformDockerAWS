@@ -56,7 +56,7 @@ jobs:
           ECR_URI=${{ steps.parse.outputs.ECR_BACKEND_VENTAS }}
           REGISTRY=$(echo $ECR_URI | cut -d'/' -f1)
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $REGISTRY
-          docker build -t $ECR_URI:latest back-Ventas_SpringBoot/Springboot-API-REST
+          docker build -t $ECR_URI:latest "proyecto semestral/back-Ventas_SpringBoot/Springboot-API-REST"
           docker push $ECR_URI:latest
 
       - name: Build and push backend despacho
