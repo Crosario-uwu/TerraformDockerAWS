@@ -29,6 +29,7 @@ jobs:
         run: terraform init
 
    
+        
       - name: Terraform apply
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform apply -auto-approve
