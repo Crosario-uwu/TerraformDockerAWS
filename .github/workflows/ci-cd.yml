@@ -24,6 +24,13 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      - name: Delete existing resources
+        run: |
+          aws ecr delete-repository --repository-name proyecto-semestral-backend-ventas --force --region ${{ secrets.AWS_REGION }} || true
+          aws ecr delete-repository --repository-name proyecto-semestral-backend-despacho --force --region ${{ secrets.AWS_REGION }} || true
+          aws ecr delete-repository --repository-name proyecto-semestral-frontend --force --region ${{ secrets.AWS_REGION }} || true
+          aws ec2 delete-key-pair --key-name deployer-key --region ${{ secrets.AWS_REGION }} || true
+
       - name: Terraform init
         working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: terraform init
