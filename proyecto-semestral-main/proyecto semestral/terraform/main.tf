@@ -63,7 +63,6 @@ resource "aws_security_group" "main" {
 
   ingress {
     description = "SSH"
-
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -72,7 +71,6 @@ resource "aws_security_group" "main" {
 
   ingress {
     description = "Frontend"
-
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -81,7 +79,6 @@ resource "aws_security_group" "main" {
 
   ingress {
     description = "Backend Despacho"
-
     from_port   = 8081
     to_port     = 8081
     protocol    = "tcp"
@@ -90,7 +87,6 @@ resource "aws_security_group" "main" {
 
   ingress {
     description = "Backend Ventas"
-
     from_port   = 8082
     to_port     = 8082
     protocol    = "tcp"
@@ -99,7 +95,6 @@ resource "aws_security_group" "main" {
 
   ingress {
     description = "MySQL"
-
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
@@ -137,25 +132,14 @@ resource "aws_ecr_repository" "frontend" {
 # EC2
 #########################
 
-data "aws_ami" "amazon_linux" {
-  most_recent = true
-
-  owners = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["al2023-ami-*-x86_64"]
-  }
-}
-
 resource "aws_instance" "app_server" {
-  ami           = data.aws_ami.amazon_linux.id
+  ami           = "ami-0182f373e66f89c85" # Amazon Linux 2023 us-east-1
   instance_type = var.instance_type
 
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.main.id]
 
-  key_name = var.key_pair_name
+  key_name = aws_key_pair.deployer_key.key_name
 
   associate_public_ip_address = true
 
@@ -166,22 +150,30 @@ resource "aws_instance" "app_server" {
 
   user_data = <<-EOF
               #!/bin/bash
-
               yum update -y
-
               yum install -y docker git
-
               systemctl start docker
               systemctl enable docker
-
               curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-
               chmod +x /usr/local/bin/docker-compose
-
               usermod -aG docker ec2-user
               EOF
 
   tags = {
     Name = "${var.project_name}-ec2"
   }
+}
+
+#########################
+# SSH KEY
+#########################
+
+resource "tls_private_key" "deployer" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "deployer_key" {
+  key_name   = var.key_pair_name
+  public_key = tls_private_key.deployer.public_key_openssh
 }
