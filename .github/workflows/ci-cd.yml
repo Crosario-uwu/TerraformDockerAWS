@@ -38,11 +38,12 @@ jobs:
 
       - name: Parse outputs
         id: parse
+        working-directory: "proyecto-semestral-main/proyecto semestral/terraform"
         run: |
-          ECR_BACKEND_VENTAS=$(jq -r '.ecr_backend_ventas.value' "proyecto-semestral-main/proyecto semestral/terraform/tfoutputs.json")
-          ECR_BACKEND_DESPACHO=$(jq -r '.ecr_backend_despacho.value' "proyecto-semestral-main/proyecto semestral/terraform/tfoutputs.json")
-          ECR_FRONTEND=$(jq -r '.ecr_frontend.value' "proyecto-semestral-main/proyecto semestral/terraform/tfoutputs.json")
-          EC2_IP=$(jq -r '.ec2_public_ip.value' "proyecto-semestral-main/proyecto semestral/terraform/tfoutputs.json")
+          ECR_BACKEND_VENTAS=$(jq -r '.ecr_backend_ventas.value' tfoutputs.json)
+          ECR_BACKEND_DESPACHO=$(jq -r '.ecr_backend_despacho.value' tfoutputs.json)
+          ECR_FRONTEND=$(jq -r '.ecr_frontend.value' tfoutputs.json)
+          EC2_IP=$(jq -r '.ec2_public_ip.value' tfoutputs.json)
           echo "ECR_BACKEND_VENTAS=$ECR_BACKEND_VENTAS" >> $GITHUB_OUTPUT
           echo "ECR_BACKEND_DESPACHO=$ECR_BACKEND_DESPACHO" >> $GITHUB_OUTPUT
           echo "ECR_FRONTEND=$ECR_FRONTEND" >> $GITHUB_OUTPUT
